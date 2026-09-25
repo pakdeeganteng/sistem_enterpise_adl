@@ -1,0 +1,36 @@
+services:
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # jadi hostname DB harus nama service-nya di network Compose.
+      - DB_HOST=product-db
+      - DB_USER=appuser
+      - DB_PORT=3306
+      - DB_PASSWORD=password
+      - DB_NAME=productdb
+    depends_on:
+      product-db:
+        condition: service_healthy
+  product-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: productdb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+
+    volumes:
+      - product-db-data:/var/lib/mysql
+      - ./product-service/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  product-db-data:
