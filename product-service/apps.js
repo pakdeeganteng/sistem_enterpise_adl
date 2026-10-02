@@ -5,7 +5,7 @@ const productRoutes = require('./routes/productRoutes');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 
 // endpoint for health check
 app.get('/health', (req, res) => {
