@@ -125,3 +125,28 @@ Untuk menjalankan product service bersama cart service, aktifkan blok
 `product-service` dan `product-db` yang dikomentari di `docker-compose.yml`,
 serta uncomment volume `product-db-data` di bagian bawah. Setelah itu jalankan
 `docker compose up --build`.
+
+## Deploy demo publik dari GitHub ke Render
+
+Root repository menyediakan `render.yaml` untuk membuat web service Docker
+beserta PostgreSQL terkelola. Deploy awal dilakukan dari Render; setelah
+repository tersambung, push ke branch `main` akan memicu deploy berikutnya.
+
+1. Push perubahan ke GitHub.
+2. Masuk ke [Render Dashboard](https://dashboard.render.com/), pilih **New**,
+   lalu **Blueprint**.
+3. Hubungkan repository `pakdeeganteng/sistem_enterpise_adl`, pilih branch
+   `main`, dan konfirmasi deploy Blueprint.
+4. Tunggu web service `cart-service` dan database `cart-db` selesai dibuat.
+   Render mengisi `APP_KEY` dan konfigurasi database dari Blueprint; tidak
+   perlu menyalin `.env` lokal ke GitHub.
+5. Buka URL `onrender.com` milik web service dan cek `/up`. Request API memakai
+   URL yang sama, misalnya `/carts/1`.
+
+Blueprint menggunakan instance gratis untuk demo. Render dapat menidurkan web
+service gratis setelah tidak aktif dan PostgreSQL gratis memiliki batas masa
+simpan; jangan gunakan konfigurasi gratis untuk data penting atau produksi.
+API ini belum memiliki autentikasi dan URL publik memungkinkan siapa saja
+mengakses keranjang berdasarkan `user_id`. Gunakan hanya untuk demo/testing
+dengan data yang tidak sensitif, atau tambahkan autentikasi sebelum menyimpan
+data nyata.

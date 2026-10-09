@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: cart-service
+    runtime: docker
+    plan: free
+    rootDir: cart-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: cart-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: cart-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: cart-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: cart-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: cart-db
+          property: password
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+
+databases:
+  - name: cart-db
+    databaseName: cartdb
+    user: appuser
+    plan: free
+    postgresMajorVersion: "16"
