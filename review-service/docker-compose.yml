@@ -1,0 +1,69 @@
+services:
+  review-service:
+    build: .
+    ports:
+      - "3002:3002"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3002"
+      FLASK_DEBUG: "1"
+      MONGO_URI: ${MONGO_URI:?Set MONGO_URI in review-service/.env}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-reviewdb}
+      PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:3000}
+    depends_on:
+      review-db:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+
+  review-db:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?Set MONGO_INITDB_ROOT_USERNAME in review-service/.env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Set MONGO_INITDB_ROOT_PASSWORD in review-service/.env}
+    ports:
+      - "27017:27017"
+    volumes:
+      - review-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+      timeout: 5s
+
+  product-service:
+    build: ../product-service
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: ${DB_HOST:-product-db}
+      DB_USER: ${DB_USER:?Set DB_USER in review-service/.env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in review-service/.env}
+      DB_NAME: ${DB_NAME:-productdb}
+    depends_on:
+      product-db:
+        condition: service_healthy
+
+  product-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in review-service/.env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-productdb}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in review-service/.env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in review-service/.env}
+    ports:
+      - "3307:3306"
+    volumes:
+      - product-db-data:/var/lib/mysql
+      - ../product-service/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$${MYSQL_ROOT_PASSWORD}\" mysqladmin ping --host=localhost --user=root --silent"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+volumes:
+  review-db-data:
+  product-db-data:

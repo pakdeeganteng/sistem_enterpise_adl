@@ -1,0 +1,183 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-10-21T01:15:00.000Z",
+  "__export_source": "insomnia.desktop.app:v10.0.0",
+  "resources": [
+    {
+      "_id": "wrk_review_service",
+      "parentId": null,
+      "modified": 1792545300000,
+      "created": 1792545300000,
+      "name": "Review Service",
+      "description": "Requests for the Review Service API running locally with Docker Compose.",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_review_service",
+      "parentId": "wrk_review_service",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3002",
+        "product_id": 1,
+        "review_id": "GANTI_DENGAN_ID_HASIL_POST",
+        "user_id": 10001
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "product_id",
+          "review_id",
+          "user_id"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1792545300000,
+      "_type": "environment"
+    },
+    {
+      "_id": "req_review_health",
+      "parentId": "wrk_review_service",
+      "name": "Review Service Health",
+      "description": "Check that the Review Service is running.",
+      "url": "{{ _.base_url }}/health",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 1,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingFollowRedirects": "global",
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingDisableRenderRequestBody": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_review_list_product",
+      "parentId": "wrk_review_service",
+      "name": "Get Reviews by Product",
+      "description": "Get all reviews and the rating summary for the configured product_id.",
+      "url": "{{ _.base_url }}/reviews/product/{{ _.product_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 2,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingFollowRedirects": "global",
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingDisableRenderRequestBody": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_review_create",
+      "parentId": "wrk_review_service",
+      "name": "Create Review (POST)",
+      "description": "Create a review for the configured product_id. The product must exist. Use a new user_id if that user already reviewed the product.",
+      "url": "{{ _.base_url }}/reviews",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"product_id\": {{ _.product_id }},\n  \"user_id\": {{ _.user_id }},\n  \"rating\": 5,\n  \"comment\": \"Review dibuat melalui Insomnia\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 3,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingFollowRedirects": "global",
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingDisableRenderRequestBody": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_review_get",
+      "parentId": "wrk_review_service",
+      "name": "Get Review by ID",
+      "description": "Set review_id in the Base Environment to data.id from the Create Review response.",
+      "url": "{{ _.base_url }}/reviews/{{ _.review_id }}",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 4,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingFollowRedirects": "global",
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingDisableRenderRequestBody": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_review_update",
+      "parentId": "wrk_review_service",
+      "name": "Update Review (PUT)",
+      "description": "Set review_id in the Base Environment to data.id from the Create Review response before sending.",
+      "url": "{{ _.base_url }}/reviews/{{ _.review_id }}",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"rating\": 4,\n  \"comment\": \"Review diperbarui melalui Insomnia\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 5,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingFollowRedirects": "global",
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingDisableRenderRequestBody": false,
+      "_type": "request"
+    },
+    {
+      "_id": "req_review_delete",
+      "parentId": "wrk_review_service",
+      "name": "Delete Review (DELETE)",
+      "description": "Set review_id in the Base Environment to data.id from the Create Review response before sending.",
+      "url": "{{ _.base_url }}/reviews/{{ _.review_id }}",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 6,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingFollowRedirects": "global",
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingDisableRenderRequestBody": false,
+      "_type": "request"
+    }
+  ]
+}
