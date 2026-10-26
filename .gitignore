@@ -1,3 +1,4 @@
 **/.env
 **/.env.*
 !**/.env.example
+!order-service/.env.testing

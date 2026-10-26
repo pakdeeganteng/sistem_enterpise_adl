@@ -1,0 +1,21 @@
+{
+  "name": "sistem_enterpise_adl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "composer --working-dir=order-service test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pakdeeganteng/sistem_enterpise_adl.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pakdeeganteng/sistem_enterpise_adl/issues"
+  },
+  "homepage": "https://github.com/pakdeeganteng/sistem_enterpise_adl#readme"
+}

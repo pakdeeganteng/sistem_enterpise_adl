@@ -15,6 +15,13 @@ services:
     depends_on:
       product-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   product-db:
     image: mysql:8.0
     environment:
@@ -32,5 +39,113 @@ services:
       timeout: 5s
       retries: 5
 
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      APP_KEY: ${CART_APP_KEY:-}
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:3001
+      DB_CONNECTION: pgsql
+      DB_HOST: cart-db
+      DB_PORT: 5432
+      DB_DATABASE: cartdb
+      DB_USERNAME: appuser
+      DB_PASSWORD: apppassword
+      LOG_CHANNEL: stderr
+    depends_on:
+      cart-db:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - if [ -z "$$APP_KEY" ]; then export APP_KEY="$$(php artisan key:generate --show)"; fi; php artisan migrate --force && exec php artisan serve --host=0.0.0.0 --port="$${PORT:-3001}"
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:3001/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  cart-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cartdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d cartdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      APP_KEY: ${ORDER_APP_KEY:-}
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:3003
+      CART_SERVICE_URL: http://cart-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3000
+      DB_CONNECTION: mysql
+      DB_HOST: order-db
+      DB_PORT: 3306
+      DB_DATABASE: orderdb
+      DB_USERNAME: orderuser
+      DB_PASSWORD: orderpassword
+      LOG_CHANNEL: stderr
+    command:
+      - sh
+      - -c
+      - if [ -z "$$APP_KEY" ]; then export APP_KEY="$$(php artisan key:generate --show)"; fi; php artisan migrate --force && exec php artisan serve --host=0.0.0.0 --port="$${PORT:-3003}"
+    depends_on:
+      order-db:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:3003/health') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  order-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: orderdb
+      MYSQL_USER: orderuser
+      MYSQL_PASSWORD: orderpassword
+      MYSQL_ROOT_PASSWORD: orderrootpassword
+    ports:
+      - "3307:3306"
+    volumes:
+      - order-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 volumes:
   product-db-data:
+  cart-db-data:
+  order-mysql-data:

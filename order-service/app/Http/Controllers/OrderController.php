@@ -8,6 +8,7 @@ use App\Exceptions\OrderPaymentConflictException;
 use App\Exceptions\ServiceCommunicationException;
 use App\Http\Requests\ListUserOrdersRequest;
 use App\Http\Requests\StoreOrderRequest;
+use App\Http\Resources\OrderResource;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'message' => 'Pesanan berhasil dibuat',
-                'data' => $order,
+                'data' => new OrderResource($order),
             ], 201);
         } catch (CheckoutConflictException $exception) {
             return response()->json([
@@ -40,9 +41,16 @@ class OrderController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
-            return response()->json([
+            $body = [
                 'message' => 'Layanan terkait tidak dapat dihubungi',
-            ], 503);
+            ];
+
+            if (config('app.debug')) {
+                $body['error'] = $exception->getMessage();
+                $body['service'] = $exception->service;
+            }
+
+            return response()->json($body, 503);
         } catch (Throwable $exception) {
             Log::error('Unexpected error while creating an order.', [
                 'operation' => 'checkout',
@@ -54,9 +62,17 @@ class OrderController extends Controller
                 'line' => $exception->getLine(),
             ]);
 
-            return response()->json([
+            $body = [
                 'message' => 'Gagal membuat pesanan',
-            ], 500);
+            ];
+
+            if (config('app.debug')) {
+                $body['error'] = $exception->getMessage();
+                $body['exception'] = $exception::class;
+                $body['location'] = $exception->getFile().':'.$exception->getLine();
+            }
+
+            return response()->json($body, 500);
         }
     }
 
@@ -65,7 +81,7 @@ class OrderController extends Controller
         try {
             return response()->json([
                 'message' => 'Berhasil mengambil pesanan',
-                'data' => $this->orderService->getOrder($id),
+                'data' => new OrderResource($this->orderService->getOrder($id)),
             ]);
         } catch (OrderNotFoundException $exception) {
             return response()->json(['message' => $exception->getMessage()], 404);
@@ -79,10 +95,10 @@ class OrderController extends Controller
         try {
             return response()->json([
                 'message' => 'Berhasil mengambil daftar pesanan',
-                'data' => $this->orderService->getUserOrders(
+                'data' => OrderResource::collection($this->orderService->getUserOrders(
                     $userId,
                     $request->validated()['status'] ?? null,
-                ),
+                )),
             ]);
         } catch (Throwable $exception) {
             return $this->unexpectedError($exception, 'mengambil daftar pesanan', ['user_id' => $userId]);
@@ -93,8 +109,8 @@ class OrderController extends Controller
     {
         try {
             return response()->json([
-                'message' => 'Pesanan berhasil ditandai sebagai PAID',
-                'data' => $this->orderService->markPaid($id),
+                'message' => 'Pesanan berhasil dibayar',
+                'data' => new OrderResource($this->orderService->markPaid($id)),
             ]);
         } catch (OrderNotFoundException $exception) {
             return response()->json(['message' => $exception->getMessage()], 404);
@@ -120,8 +136,16 @@ class OrderController extends Controller
             'line' => $exception->getLine(),
         ]);
 
-        return response()->json([
+        $body = [
             'message' => "Gagal {$action}",
-        ], 500);
+        ];
+
+        if (config('app.debug')) {
+            $body['error'] = $exception->getMessage();
+            $body['exception'] = $exception::class;
+            $body['location'] = $exception->getFile().':'.$exception->getLine();
+        }
+
+        return response()->json($body, 500);
     }
 }

@@ -45,14 +45,15 @@ class OrderCheckoutTest extends TestCase
             ->assertJsonPath('message', 'Pesanan berhasil dibuat')
             ->assertJsonPath('data.user_id', 7)
             ->assertJsonPath('data.status', 'PENDING')
-            ->assertJsonPath('data.total_amount', '900100.50')
+            ->assertJsonPath('data.total_amount', 900100.5)
             ->assertJsonPath('data.items.0.product_id', 11)
             ->assertJsonPath('data.items.0.product_name', 'USB Hub')
-            ->assertJsonPath('data.items.0.unit_price', '450000.00')
+            ->assertJsonPath('data.items.0.unit_price', 450000)
             ->assertJsonPath('data.items.0.quantity', 2)
-            ->assertJsonPath('data.items.0.subtotal', '900000.00')
+            ->assertJsonPath('data.items.0.subtotal', 900000)
             ->assertJsonPath('data.items.1.product_name', 'Mouse')
-            ->assertJsonPath('data.items.1.subtotal', '100.50');
+            ->assertJsonPath('data.items.1.unit_price', 100.5)
+            ->assertJsonPath('data.items.1.subtotal', 100.5);
 
         $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseCount('order_items', 2);
@@ -100,9 +101,9 @@ class OrderCheckoutTest extends TestCase
 
         $this->getJson("/orders/{$orderId}")
             ->assertOk()
-            ->assertJsonPath('data.items.0.unit_price', '450000.00')
-            ->assertJsonPath('data.items.0.subtotal', '900000.00')
-            ->assertJsonPath('data.total_amount', '900000.00');
+            ->assertJsonPath('data.items.0.unit_price', 450000)
+            ->assertJsonPath('data.items.0.subtotal', 900000)
+            ->assertJsonPath('data.total_amount', 900000);
     }
 
     public function test_failed_order_item_insert_rolls_back_the_order_transaction(): void
@@ -289,6 +290,19 @@ class OrderCheckoutTest extends TestCase
                     && $context['exception'] === ServiceCommunicationException::class,
             ))
             ->once();
+    }
+
+    public function test_service_failure_details_are_only_returned_when_debug_is_enabled(): void
+    {
+        config(['app.debug' => true]);
+        Http::fake([
+            'cart.test/carts/7' => Http::response(['message' => 'private upstream detail'], 503),
+        ]);
+
+        $this->postJson('/orders', ['user_id' => 7])
+            ->assertServiceUnavailable()
+            ->assertJsonPath('error', 'Unable to communicate with Cart Service: returned HTTP 503')
+            ->assertJsonPath('service', 'Cart Service');
     }
 
     public function test_cart_clear_failure_is_logged_but_saved_order_is_returned(): void

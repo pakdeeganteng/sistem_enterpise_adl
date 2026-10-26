@@ -1,0 +1,1 @@
+"""Flask blueprints and URL rules for review endpoints."""

@@ -2,8 +2,9 @@
 
 Cart service untuk proyek e-commerce microservices. Service ini menggunakan
 Laravel dan PostgreSQL, sementara data produk tetap dimiliki oleh
-`product-service`. Di Windows, jalankan perintah dari PowerShell di folder
-`cart-service`.
+`product-service`. Dari root repository, stack utama yang menghubungkan Product,
+Cart, dan Order dijalankan lewat `docker-compose.yml` root. Petunjuk di bawah
+tetap berlaku untuk menjalankan Cart secara mandiri dari folder ini.
 
 ## Langkah 1-2: Project Laravel dan migration bawaan
 
@@ -23,6 +24,10 @@ docker compose ps
 
 Tunggu sampai status `cart-db` menjadi `healthy`.
 
+Untuk menjalankan stack terintegrasi dari root repository, gunakan `docker
+compose up --build -d`; APP_KEY Cart dan Order harus lebih dulu diisi di `.env`
+root sesuai petunjuk pada README utama.
+
 ## Langkah 4: Konfigurasi environment
 
 `.env` dan `.env.example` menggunakan PostgreSQL, session/cache file, serta
@@ -34,7 +39,8 @@ composer install
 php artisan key:generate
 ```
 
-PHP 8.3 atau lebih baru, Composer 2, dan ekstensi PHP `pdo_pgsql` diperlukan.
+PHP 8.4.1 atau lebih baru, Composer 2, dan ekstensi PHP `pdo_pgsql` diperlukan
+agar sesuai dengan versi dependency pada `composer.lock`.
 Di Windows, periksa dengan `php -m | findstr pdo_pgsql`; jika belum muncul,
 aktifkan `extension=pdo_pgsql` di `php.ini` lalu buka terminal baru.
 
@@ -121,10 +127,9 @@ docker compose logs -f cart-service
 Cart service tersedia di `http://localhost:3001`; log aplikasi container
 dikirim ke output standar.
 
-Untuk menjalankan product service bersama cart service, aktifkan blok
-`product-service` dan `product-db` yang dikomentari di `docker-compose.yml`,
-serta uncomment volume `product-db-data` di bagian bawah. Setelah itu jalankan
-`docker compose up --build`.
+Untuk menjalankan Cart bersama Product dan Order, gunakan Compose root. Jangan
+mengaktifkan stack Cart mandiri bersamaan dengan root Compose karena keduanya
+menggunakan host port `3001` dan `5432`.
 
 ## Deploy demo publik dari GitHub ke Render
 

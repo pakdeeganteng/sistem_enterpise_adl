@@ -2,7 +2,7 @@
 
 Repository ini berisi beberapa service untuk sistem e-commerce kelas: pengelolaan produk, keranjang, review, dan pesanan, serta aplikasi web React. Setiap service memiliki database dan konfigurasi sendiri; service berkomunikasi melalui HTTP, bukan dengan membaca database service lain secara langsung.
 
-> **Status integrasi:** Compose root saat ini hanya menjalankan Product Service dan database MySQL-nya. Cart dan Review mempunyai Compose terpisah, sedangkan Order Service belum dimasukkan ke Compose gabungan dan belum memiliki container database. Karena tiap Compose membuat network sendiri, konfigurasi saat ini belum dapat menjalankan seluruh sistem sebagai satu stack yang saling terhubung. Instruksi di bawah menjelaskan bagian yang benar-benar tersedia dan batasnya.
+> **Status integrasi:** Compose root menjalankan Product, Cart, dan Order beserta database masing-masing. Stack ini sudah dibangun dan dijalankan; endpoint health Product/Order dan endpoint baca Cart berhasil diperiksa. Review tetap memakai Compose terpisah, sedangkan Ecommerce UI dijalankan lokal.
 
 ## Arsitektur
 
@@ -17,18 +17,19 @@ React/Vite UI (opsional)
        |                       |
        |                       +---- HTTP ----> Product Service
        |
-       +---- HTTP ----> Order Service (Laravel) --+--> PostgreSQL order*
+       +---- HTTP ----> Order Service (Laravel) --+--> MySQL order
                                                   +--> Cart Service
                                                   +--> Product Service
 ```
 
-`*` Order Service dikonfigurasi untuk PostgreSQL, tetapi saat ini tidak ada database atau Compose service Order yang disediakan di repository. Diagram menjelaskan rancangan koneksi aplikasi, bukan bukti bahwa stack gabungan sudah dijalankan.
+Review berjalan sebagai stack terpisah dan tidak otomatis berbagi network Compose root.
 
 ## Struktur repository
 
 ```text
 .
-├── docker-compose.yml             # Product Service + product-db
+├── docker-compose.yml             # Product, Cart, Order, dan database masing-masing
+├── .env.example                   # Environment Compose lokal; APP_KEY dapat dibuat otomatis
 ├── product-service/               # Node.js, Express, MySQL
 │   ├── controllers/
 │   ├── database/init.sql
@@ -43,7 +44,7 @@ React/Vite UI (opsional)
 │   ├── app/
 │   ├── insomnia/
 │   └── docker-compose.yml
-├── order-service/                 # Laravel, database order terpisah
+├── order-service/                 # Laravel, MySQL milik Order Service
 │   ├── app/Clients/
 │   ├── app/Http/
 │   ├── app/Models/
@@ -60,13 +61,13 @@ React/Vite UI (opsional)
 | Service | Teknologi/database | Port host | Ketersediaan Compose saat ini |
 |---|---|---:|---|
 | Product Service | Node.js/Express | 3000 | Root Compose dan Review Compose |
-| Cart Service | Laravel/PostgreSQL | 3001 | Compose di `cart-service/` |
+| Cart Service | Laravel/PostgreSQL | 3001 | Root Compose |
 | Review Service | Flask/MongoDB | 3002 | Compose di `review-service/` |
-| Order Service | Laravel/PostgreSQL | 3003 | Dockerfile tersedia; belum ada service di Compose |
+| Order Service | Laravel/MySQL | 3003 | Root Compose |
 | Product DB | MySQL | Root: tidak dipublikasikan; Review Compose: 3307 → 3306 | Root dan Review Compose (stack terpisah) |
-| Cart DB | PostgreSQL | 5432 | Cart Compose |
+| Cart DB | PostgreSQL | 5432 | Root Compose |
 | Review DB | MongoDB | 27017 | Review Compose |
-| Order DB | PostgreSQL sesuai konfigurasi saat ini | — | Belum disediakan |
+| Order DB | MySQL | 3307 → 3306 | Root Compose |
 | Ecommerce UI | React/Vite | 5173 (default Vite) | Jalankan lokal, bukan bagian Compose |
 
 Port host harus tersedia saat service terkait dijalankan. Jangan menjalankan dua Compose yang sama-sama memetakan Product Service ke port 3000 secara bersamaan.
@@ -106,16 +107,16 @@ Contoh response sukses (`201`):
     "id": 41,
     "user_id": 7,
     "status": "PENDING",
-    "total_amount": "900000.00",
+    "total_amount": 900000,
     "items": [
       {
         "id": 81,
         "order_id": 41,
         "product_id": 11,
         "product_name": "USB Hub",
-        "unit_price": "450000.00",
+        "unit_price": 450000,
         "quantity": 2,
-        "subtotal": "900000.00"
+        "subtotal": 900000
       }
     ]
   }
@@ -192,13 +193,13 @@ Jangan masukkan file `.env` lokal ke Git. Mulai dari template `.env.example` ser
 | Review | `HOST`, `PORT`, `FLASK_DEBUG`, `MONGO_URI`, `MONGO_DB_NAME`, `PRODUCT_SERVICE_URL`; Compose Review memerlukan `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`. |
 | Order | `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `PORT`, `CART_SERVICE_URL`, `PRODUCT_SERVICE_URL`, `LOG_CHANNEL`, `LOG_LEVEL`, `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`. |
 
-Nilai `DB_HOST` untuk koneksi antarkontainer adalah nama service database di network Compose yang sama, bukan `localhost`. URL Cart/Product Order harus mengarah ke hostname dan port yang dapat dijangkau dari container Order. Karena Compose saat ini terpisah, hostname Compose tidak otomatis dapat dipakai lintas stack.
+Nilai `DB_HOST` untuk koneksi antarkontainer adalah nama service database di network Compose yang sama, bukan `localhost`. URL Cart/Product Order pada root Compose menggunakan nama service `cart-service` dan `product-service`.
 
-Product Compose root menyimpan nilai pengembangan langsung di YAML. Nilai tersebut bukan secret produksi; konfigurasi ini perlu diperkeras sebelum deployment.
+Root Compose memakai kredensial database tetap untuk development lokal; jangan gunakan konfigurasi tersebut untuk deployment produksi. Jika APP_KEY tidak diberikan, container Cart dan Order membuat key saat startup untuk development. Untuk deployment, sediakan key acak yang persisten melalui environment.
 
 ## Menyiapkan environment lokal
 
-Prasyarat yang sesuai dengan berkas proyek: Docker Engine dengan Docker Compose, Node.js/npm untuk Product/UI, PHP dan Composer untuk Laravel, serta Python/pip untuk Review bila menjalankannya di luar container.
+Prasyarat yang sesuai dengan berkas proyek: Docker Engine dengan Docker Compose, Node.js/npm untuk Product/UI, PHP **8.4.1 atau lebih baru** dan Composer 2 untuk Cart/Order bila menjalankannya di luar container, serta Python/pip untuk Review bila menjalankannya di luar container. Order Service menggunakan MySQL di container database khusus, terpisah dari database Product dan Cart.
 
 ### Order Service
 
@@ -209,7 +210,7 @@ Copy-Item .env.example .env
 php artisan key:generate
 ```
 
-Sesuaikan `.env` lokal dengan database Order yang memang disediakan untuk pengembangan. Template saat ini memakai PostgreSQL (`DB_CONNECTION=pgsql`), namun tidak ada database Order pada Compose repository. Jangan menjalankan migration sebelum `DB_HOST`, nama database, dan kredensial dipastikan menunjuk ke database Order yang benar.
+Untuk menjalankan service lokal tanpa Docker, sesuaikan `.env` dengan database Order yang tersedia; contoh `.env.example` memakai host port `3307`. Di Compose, APP_KEY dibuat otomatis saat container dimulai bila variabelnya kosong. Untuk deployment yang mempertahankan sesi antar-restart, berikan APP_KEY unik melalui environment.
 
 ### Review Service
 
@@ -221,60 +222,62 @@ Ganti semua placeholder secret di `.env` lokal dengan nilai unik. Compose Review
 
 ## Menjalankan dengan Docker Compose
 
-### Stack yang tersedia sekarang
-
-Dari root repository, validasi dan jalankan Product Service:
+Root Compose menjalankan Product, Cart, dan Order beserta database masing-masing. Untuk clone baru, salin file environment bila diperlukan, lalu Compose dapat langsung dijalankan:
 
 ```powershell
+Copy-Item .env.example .env
+docker compose config --services
 docker compose config
 docker compose up --build -d
 docker compose ps
-docker compose logs --tail 100 product-service product-db
+docker compose logs --tail 100 order-service
 ```
 
-Product DB tidak mempublikasikan host port. Database menggunakan volume `product-db-data`; jangan menghapus volume untuk menghentikan stack.
-
-Cart Service dapat dijalankan sebagai stack terpisah:
+Log service lain dapat dilihat dengan mengganti nama service:
 
 ```powershell
-docker compose -f .\cart-service\docker-compose.yml config
-docker compose -f .\cart-service\docker-compose.yml up --build -d
-docker compose -f .\cart-service\docker-compose.yml ps
+docker compose logs -f product-service
+docker compose logs -f cart-service
+docker compose logs -f order-service
 ```
 
-Review Compose memerlukan `.env` lokal dan mendefinisikan Product Service sendiri. Agar path file dan environment eksplisit:
+Laravel test dijalankan dari root melalui `npm test`, atau langsung dari folder Order:
+
+```powershell
+Set-Location .\order-service
+php artisan test
+```
+
+Review Compose tetap terpisah dan memerlukan `.env` sendiri:
 
 ```powershell
 docker compose --env-file .\review-service\.env -f .\review-service\docker-compose.yml config
 docker compose --env-file .\review-service\.env -f .\review-service\docker-compose.yml up --build -d
 ```
 
-Jangan jalankan Review Compose bersamaan dengan root Compose tanpa mengubah rancangan port: keduanya memetakan Product Service ke host port `3000`. Stack-stack terpisah juga tidak berbagi DNS/network. **Belum ada satu perintah Compose yang menjalankan seluruh service bersama-sama**, dan Order Service belum dapat dijalankan melalui Compose repository saat ini. Integrasi tersebut memerlukan perubahan konfigurasi gabungan serta database Order khusus.
+Jangan jalankan Review Compose bersamaan dengan root Compose tanpa mengubah rancangan port: keduanya memetakan Product Service ke host port `3000`. Compose root menggunakan volume persisten untuk database; jangan gunakan opsi `down -v` jika data ingin dipertahankan.
 
 Untuk menghentikan stack yang memang dijalankan, gunakan `docker compose ... down` pada file Compose yang sama. Jangan gunakan opsi `-v`; volume berisi data persisten.
 
 ## Migration dan testing
 
-Order migrations berada di `order-service/database/migrations/` dan membuat tabel `orders` serta `order_items`. Kedua tabel menyimpan uang dengan `DECIMAL(12,2)`; `order_items.order_id` memiliki foreign key ke `orders.id`.
+Order migrations berada di `order-service/database/migrations/` dan membuat tabel `orders` serta `order_items` di MySQL khusus Order Service. Kedua tabel menyimpan uang dengan `DECIMAL(12,2)`; `order_items.order_id` memiliki foreign key ke `orders.id`. Root Compose menjalankan migration Order saat container dimulai dan menunggu database Order berstatus healthy.
 
-Migration hanya boleh dijalankan setelah koneksi database Order diverifikasi:
-
-```powershell
-Set-Location .\order-service
-php artisan migrate:status
-php artisan migrate --force
-```
-
-Perintah migration di atas **belum dijalankan terhadap database nyata** dalam verifikasi proyek ini. PHPUnit mengatur SQLite `:memory:` untuk test, sehingga test migration tidak mengubah database persisten.
-
-Automated tests Order:
+Root Compose menjalankan migration Order saat container dimulai. Untuk memeriksa migration dari dalam stack:
 
 ```powershell
-Set-Location .\order-service
-php artisan test --display-warnings
+docker compose exec order-service php artisan migrate:status
 ```
 
-Hasil terakhir yang benar-benar tercatat: **35 test lulus, 174 assertions**. Cakupan mencakup endpoint, transaksi rollback, snapshot harga, validasi client, timeout configuration, logging, dan mode debug. Tes Cart/Product menggunakan HTTP fake; test database memakai SQLite in-memory. Ini bukan integrasi langsung ke service nyata atau PostgreSQL.
+Untuk menjalankan migration manual, pastikan terlebih dahulu service `order-db` sehat. PHPUnit memakai SQLite `:memory:`, sehingga test tidak mengubah database persisten.
+
+Automated tests Order dari root:
+
+```powershell
+npm test
+```
+
+Perintah yang sama dapat dijalankan langsung dari folder service dengan `php artisan test`. Suite memakai SQLite `:memory:` dan HTTP fake untuk Cart/Product; runtime Compose menggunakan MySQL, dan test suite bukan integrasi langsung dengan Product/Cart yang berjalan.
 
 Lint PHP:
 
@@ -325,7 +328,7 @@ Setelah transaksi berhasil, Order mencoba mengosongkan cart. Jika permintaan DEL
 - Cart kosong, produk tidak ada, atau stok kurang: `409`.
 - Kegagalan komunikasi Cart/Product: `503`; produk yang tidak ditemukan dibedakan dari error komunikasi.
 - Order tidak ditemukan atau ID nonnumerik: `404`; order yang sudah dibayar: `409`.
-- Error internal: `500` dengan pesan generik untuk client; detail exception, file, dan baris dicatat di log server.
+- Error internal: `500` dengan pesan generik untuk client saat debug mati; detail exception, file, dan baris dicatat di log server dan hanya ditambahkan ke response saat `APP_DEBUG=true`. Aturan serupa berlaku untuk `503`.
 - Request keluar ke Cart/Product memiliki timeout maksimum 5 detik dan memvalidasi status, JSON, serta bentuk data response.
 - Checkout mencatat konteks operasi, user/order/product ID jika tersedia, dan service terkait. Kegagalan clear cart dicatat sebagai error tetapi tidak membatalkan response sukses.
 
@@ -334,7 +337,7 @@ Setelah transaksi berhasil, Order mencoba mengosongkan cart. Jika permintaan DEL
 - Setiap service memiliki database sendiri untuk menghindari coupling database lintas service.
 - Harga disimpan sebagai DECIMAL dan dihitung sebagai integer sen, bukan floating point.
 - HTTP fake membuat tes terisolasi dan cepat, tetapi tidak membuktikan integrasi jaringan nyata.
-- Test migration memverifikasi skema melalui SQLite in-memory. Tipe/driver PostgreSQL belum diverifikasi; `pdo_pgsql` tidak tersedia pada lingkungan PHP lokal saat audit terakhir.
+- Test migration memverifikasi skema melalui SQLite in-memory. Container Order memakai MySQL 8 dan ekstensi PHP `pdo_mysql`.
 - Timeout diperiksa melalui konfigurasi test, bukan penantian jaringan lima detik terhadap service nyata.
-- Compose root, Cart, dan Review berdiri sendiri, dengan kemungkinan konflik port dan tanpa shared network. Compose gabungan, Order DB/container, pemeriksaan komunikasi antarservice secara live, serta pengujian dari clone baru belum tersedia/terverifikasi.
+- Compose root menggabungkan Product, Cart, dan Order dalam satu network; Review tetap memakai stack terpisah. Endpoint health, kontrak baca Cart/Product, dan migration MySQL Order sudah diperiksa live, tetapi checkout penuh antarservice belum diuji end-to-end.
 - Compose yang ada berisi nilai pengembangan; buat secret unik dan konfigurasi production sebelum deployment. Jangan commit file `.env`.

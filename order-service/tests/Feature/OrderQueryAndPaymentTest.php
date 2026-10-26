@@ -86,7 +86,7 @@ class OrderQueryAndPaymentTest extends TestCase
 
         $this->patchJson("/orders/{$order->id}/pay")
             ->assertOk()
-            ->assertJsonPath('message', 'Pesanan berhasil ditandai sebagai PAID')
+            ->assertJsonPath('message', 'Pesanan berhasil dibayar')
             ->assertJsonPath('data.status', 'PAID')
             ->assertJsonPath('data.items.0.product_name', 'USB Hub');
 
@@ -171,7 +171,7 @@ class OrderQueryAndPaymentTest extends TestCase
             ->once();
     }
 
-    public function test_debug_mode_does_not_expose_internal_error_details(): void
+    public function test_debug_mode_exposes_internal_error_details(): void
     {
         config(['app.debug' => true]);
 
@@ -183,10 +183,13 @@ class OrderQueryAndPaymentTest extends TestCase
 
         $response = $this->getJson('/orders/1')
             ->assertInternalServerError()
-            ->assertExactJson(['message' => 'Gagal mengambil pesanan']);
+            ->assertJsonPath('message', 'Gagal mengambil pesanan')
+            ->assertJsonPath('error', 'database password or stack trace')
+            ->assertJsonPath('exception', RuntimeException::class)
+            ->assertJsonStructure(['location']);
 
-        $this->assertStringNotContainsString('database password', $response->getContent());
-        $this->assertStringNotContainsString('RuntimeException', $response->getContent());
+        $this->assertStringContainsString('database password', $response->getContent());
+        $this->assertStringContainsString(RuntimeException::class, $response->getContent());
     }
 
     private function createOrderWithItem(int $userId, string $status = 'PENDING'): Order
