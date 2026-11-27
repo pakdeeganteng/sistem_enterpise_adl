@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 72" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">AdulShop</title>
+  <rect x="0.5" y="0.5" width="259" height="71" rx="18" fill="#080B08"/>
+  <g transform="translate(4 4)">
+    <path d="M13 23h30l-2.5 28h-25L13 23Z" fill="#F5F5F5"/>
+    <path d="M19 24v-4a9 9 0 0 1 18 0v4" fill="none" stroke="#A3FF12" stroke-linecap="round" stroke-width="3"/>
+    <path d="m18 43 7.5-16h4L37 43h-5l-1.5-3.5h-6L23 43h-5Zm8.2-7.5h3.1l-1.6-3.6-1.5 3.6Z" fill="#080B08"/>
+    <path d="M6 44c5.5 10 14.5 15.5 25 15 7.2-.3 12.8-3.1 18-8.3" fill="none" stroke="#A3FF12" stroke-linecap="round" stroke-width="2.5"/>
+    <circle cx="49" cy="50.7" r="2" fill="#A3FF12"/>
+  </g>
+  <text x="76" y="46" font-family="Inter, Montserrat, Arial, sans-serif" font-size="32" font-weight="750" letter-spacing="-0.9">
+    <tspan fill="#F5F5F5">Adul</tspan><tspan fill="#A3FF12">Shop</tspan>
+  </text>
+</svg>

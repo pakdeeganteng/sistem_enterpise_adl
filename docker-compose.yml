@@ -1,4 +1,18 @@
 services:
+  ecommerce-ui:
+    build:
+      context: ./ecommerce-ui
+      dockerfile: Dockerfile
+      args:
+        VITE_PRODUCT_URL: http://localhost:8080
+        VITE_CART_URL: http://localhost:8080
+        VITE_REVIEW_URL: http://localhost:8080
+        VITE_ORDER_URL: http://localhost:8080
+    ports:
+      - "5173:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
   product-service:
     build:
       context: ./product-service
@@ -16,12 +30,128 @@ services:
       product-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
-
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: cart-db
+      DB_PORT: 5432
+      DB_DATABASE: cartdb
+      DB_USERNAME: appuser
+      DB_PASSWORD: apppassword
+      PRODUCT_SERVICE_HOST: http://product-service:3000
+      LOG_CHANNEL: stderr
+    depends_on:
+      cart-db:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+  cart-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cartdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppassword
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d cartdb"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+  review-service:
+    build:
+      context: ./review-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./review-service/.env
+    ports:
+      - "3002:3002"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3002"
+      FLASK_DEBUG: "1"
+      PRODUCT_SERVICE_URL: http://product-service:3000
+    depends_on:
+      review-db:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:3003
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /data/orders.sqlite
+      PORT: "3003"
+    volumes:
+      - order-db-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "php",
+          "-r",
+          "exit(@file_get_contents('http://127.0.0.1:3003/up') === false ? 1 : 0);",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+      PRODUCT_URL: http://product-service:3000
+      CART_URL: http://cart-service:3001
+      REVIEW_URL: http://review-service:3002
+      ORDER_URL: http://order-service:3003
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      product-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_started
+      review-service:
+        condition: service_started
+      order-service:
+        condition: service_healthy
+  review-db:
+    image: mongo:7
+    env_file:
+      - ./review-service/.env
+    ports:
+      - "27017:27017"
+    volumes:
+      - review-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+      timeout: 5s
   product-db:
     image: mysql:8.0
     environment:
@@ -39,113 +169,8 @@ services:
       timeout: 5s
       retries: 5
 
-  cart-service:
-    build:
-      context: ./cart-service
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
-    environment:
-      PORT: 3001
-      APP_KEY: ${CART_APP_KEY:-}
-      APP_ENV: local
-      APP_DEBUG: "false"
-      APP_URL: http://localhost:3001
-      DB_CONNECTION: pgsql
-      DB_HOST: cart-db
-      DB_PORT: 5432
-      DB_DATABASE: cartdb
-      DB_USERNAME: appuser
-      DB_PASSWORD: apppassword
-      LOG_CHANNEL: stderr
-    depends_on:
-      cart-db:
-        condition: service_healthy
-    command:
-      - sh
-      - -c
-      - if [ -z "$$APP_KEY" ]; then export APP_KEY="$$(php artisan key:generate --show)"; fi; php artisan migrate --force && exec php artisan serve --host=0.0.0.0 --port="$${PORT:-3001}"
-    healthcheck:
-      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:3001/up') === false ? 1 : 0);"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  cart-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: cartdb
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: apppassword
-    ports:
-      - "5432:5432"
-    volumes:
-      - cart-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser -d cartdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  order-service:
-    build:
-      context: ./order-service
-      dockerfile: Dockerfile
-    ports:
-      - "3003:3003"
-    environment:
-      PORT: 3003
-      APP_KEY: ${ORDER_APP_KEY:-}
-      APP_ENV: local
-      APP_DEBUG: "false"
-      APP_URL: http://localhost:3003
-      CART_SERVICE_URL: http://cart-service:3001
-      PRODUCT_SERVICE_URL: http://product-service:3000
-      DB_CONNECTION: mysql
-      DB_HOST: order-db
-      DB_PORT: 3306
-      DB_DATABASE: orderdb
-      DB_USERNAME: orderuser
-      DB_PASSWORD: orderpassword
-      LOG_CHANNEL: stderr
-    command:
-      - sh
-      - -c
-      - if [ -z "$$APP_KEY" ]; then export APP_KEY="$$(php artisan key:generate --show)"; fi; php artisan migrate --force && exec php artisan serve --host=0.0.0.0 --port="$${PORT:-3003}"
-    depends_on:
-      order-db:
-        condition: service_healthy
-      cart-service:
-        condition: service_healthy
-      product-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:3003/health') === false ? 1 : 0);"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  order-db:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: orderdb
-      MYSQL_USER: orderuser
-      MYSQL_PASSWORD: orderpassword
-      MYSQL_ROOT_PASSWORD: orderrootpassword
-    ports:
-      - "3307:3306"
-    volumes:
-      - order-mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
 volumes:
   product-db-data:
   cart-db-data:
-  order-mysql-data:
+  review-db-data:
+  order-db-data:
