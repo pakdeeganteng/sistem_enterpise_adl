@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">AdulShop symbol</title>
+  <rect x="1" y="1" width="62" height="62" rx="17" fill="#080B08"/>
+  <path d="M17 23h30l-2.5 28h-25L17 23Z" fill="#F5F5F5"/>
+  <path d="M23 24v-4a9 9 0 0 1 18 0v4" fill="none" stroke="#A3FF12" stroke-linecap="round" stroke-width="3"/>
+  <path d="m22 43 7.5-16h4L41 43h-5l-1.5-3.5h-6L27 43h-5Zm8.2-7.5h3.1l-1.6-3.6-1.5 3.6Z" fill="#080B08"/>
+  <path d="M10 44c5.5 10 14.5 15.5 25 15 7.2-.3 12.8-3.1 18-8.3" fill="none" stroke="#A3FF12" stroke-linecap="round" stroke-width="2.5"/>
+  <circle cx="53" cy="50.7" r="2" fill="#A3FF12"/>
+</svg>

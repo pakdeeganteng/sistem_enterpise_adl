@@ -64,7 +64,10 @@ function productPayload(body) {
 async function index(req, res) {
     try {
         const products = await productModel.getAllProducts();
-        res.status(200).json({ data: products });
+        res.status(200).json({
+            message: 'Berhasil mengambil katalog',
+            data: products
+        });
     } catch (error) {
         console.error('Failed to list products:', error);
         res.status(500).json({ message: 'Gagal mengambil data product' });

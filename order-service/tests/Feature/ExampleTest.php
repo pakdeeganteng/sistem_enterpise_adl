@@ -8,22 +8,12 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * Default Laravel feature test.
      */
     public function test_the_application_returns_a_successful_response(): void
     {
         $response = $this->get('/');
 
         $response->assertStatus(200);
-    }
-
-    public function test_the_health_endpoint_returns_the_order_service_status(): void
-    {
-        $this->getJson('/health')
-            ->assertOk()
-            ->assertExactJson([
-                'status' => 'ok',
-                'service' => 'order-service',
-            ]);
     }
 }

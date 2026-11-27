@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 420" fill="none">
+  <defs>
+    <linearGradient id="box" x1="152" y1="110" x2="355" y2="310" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#dce8f8"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="206" y1="172" x2="306" y2="281" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4382ee"/>
+      <stop offset="1" stop-color="#173f91"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="256" cy="336" rx="131" ry="19" fill="#20375a" fill-opacity=".12"/>
+  <rect x="144" y="106" width="224" height="226" rx="30" fill="url(#box)" stroke="#b8cbe7" stroke-width="3"/>
+  <path d="M177 153h158" stroke="#b3c5df" stroke-linecap="round" stroke-width="4"/>
+  <path d="m205 267 46-101 46 101h-26l-9-21h-23l-9 21h-25Zm41-43h12l-6-15-6 15Z" fill="url(#mark)"/>
+  <path d="M200 292h112" stroke="#c1d0e4" stroke-linecap="round" stroke-width="4"/>
+</svg>
